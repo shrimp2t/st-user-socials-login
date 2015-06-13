@@ -85,34 +85,34 @@ class ST_Uer_Facebook_Login{
             'redirect_url' => '',
             'reload' => false
         );
-        switch(  $do ){
+        switch ( $do ) {
             case 'get_login_status':
                 $status = isset(  $_REQUEST['status'] ) ?  $_REQUEST['status'] : '' ;
                 if( $status == 'connected' ){
-                    if( ! is_user_logged_in() ){
+                    if ( ! is_user_logged_in() ) {
                         $me = $this->get_me( $token );
                         if( $me ) {
                             $user_id = $this->maybe_create_update_user($me);
                             // if user exists
-                            if ($user_id) {
-                                $this->login($user_id, isset($me['email']));
+                            if ( $user_id ) {
+                                $this->login( $user_id, isset($me['email'] ) );
                                 $json['redirect_url'] = apply_filters('login_redirect','');
                                 $json['reload'] =  true;
                                 $json['did'] =  'login';
                             }
                         }
-                    }else{
+                    } else {
                         $json['did'] =  'login';
                     }
                 }
                 break;
             case 'login':
-                if( $this->check_app(  $token ) ){
+                if( $this->check_app(  $token ) ) {
                     $me = $this->get_me( $token );
-                    if( $me ){
+                    if( $me ) {
                         $user_id = $this->maybe_create_update_user( $me );
                         // if user exists
-                        if( $user_id ){
+                        if( $user_id ) {
                             $this->login( $user_id, isset( $me['email'] ) );
                             $json['redirect_url'] = apply_filters('login_redirect','');
                             $json['reload'] =  true;
@@ -122,7 +122,7 @@ class ST_Uer_Facebook_Login{
                 }
                 break;
         }
-        echo json_encode(  $json );
+        echo json_encode( $json );
         die();
     }
 
@@ -135,7 +135,7 @@ class ST_Uer_Facebook_Login{
      * @return init|bool
      */
     function maybe_create_update_user( $me ){
-        if( !$me ){
+        if( !$me ) {
             return false;
         }
 
@@ -148,11 +148,11 @@ class ST_Uer_Facebook_Login{
             'meta_compare' => '=',
             'number'       => 1,
         ) );
-        if(  $us ){
+        if( $us ) {
             $u = $us[0];
         }
         unset( $us );
-        if( $u ) {
+        if ( $u ) {
             // update this user email if they provide
             if ( isset( $me['email'] ) ) {
                 if (!get_user_by('email', $me['email'])) {
@@ -170,13 +170,13 @@ class ST_Uer_Facebook_Login{
          * Try fo find user if logged in/registered before
          * check if email is not registered
          */
-        if( isset(  $me['email'] ) ){ // try to find with email
+        if ( isset( $me['email'] ) ) { // try to find with email
             $u = get_user_by('email', $me['email'] );
         }
 
-        if( ! $u ){ // this email not register yet
+        if( ! $u ) { // this email not register yet
              // register new account with this email here.
-            $random_password = wp_generate_password( $length=12, $include_standard_special_chars=false );
+            $random_password = wp_generate_password( $length=12, $include_standard_special_chars = false );
             $name =explode( '@', $me['email'] );
             $name = $name[0];
 
@@ -185,33 +185,33 @@ class ST_Uer_Facebook_Login{
             $user_id = username_exists( $new_username );
 
             // While user exists do until wrong
-            while( $user_id ){
+            while ( $user_id ) {
                 $rand = (int) $rand + 1;
-                $new_username = $name.'_'.$rand;
+                $new_username = $name.'_f'.$rand;
                 $user_id = username_exists( $new_username );
             }
 
             $nr = wp_create_user( $new_username , $random_password, $me['email'] );
-            if( ! is_wp_error(  $nr ) ){
+            if ( ! is_wp_error(  $nr ) ) {
                 $this->update_user( $nr,  $me );
                 wp_new_user_notification( $nr, $random_password );
                 return  $nr;
             }
 
-        }else{
+        } else {
             // check this is email is using for this facebook id ?
             $fb_id = get_user_meta($u->ID, 'fb_id', true);
             // if this fb email is used for this user
-            if( $fb_id == $me['id'] ){
+            if ( $fb_id == $me['id'] ) {
                 return $u->ID;
-            }else{ // if this email is already used for other account then create new
+            } else { // if this email is already used for other account then create new
 
                 $rand = '';
                 $new_username = 'fb'.$rand.$me['id'];
                 $user_id = username_exists( $new_username );
 
                 // While user exists do until wrong
-                while( $user_id ){
+                while ( $user_id ) {
                     $rand = strtolower( wp_generate_password( 4, false ) );
                     $new_username = 'fb'.$rand.$me['id'];
                     $user_id = username_exists( $new_username );
@@ -221,9 +221,9 @@ class ST_Uer_Facebook_Login{
 
                 $nr = wp_create_user( $new_username, $random_password, '' );
 
-                if( ! is_wp_error(  $nr ) ){
+                if ( ! is_wp_error( $nr ) ) {
 
-                    $this->update_user(  $nr,  $me );
+                    $this->update_user( $nr,  $me );
 
                     wp_new_user_notification( $nr, $random_password );
                     return  $nr;
@@ -231,8 +231,6 @@ class ST_Uer_Facebook_Login{
 
             }
         }
-
-
         return false;
     }
 
@@ -283,27 +281,8 @@ class ST_Uer_Facebook_Login{
      * @param bool $remember
      * @return bool
      */
-    function login( $user_id , $remember =  true  ){
-
-        $user = get_user_by( 'id', $user_id );
-        if( $user ) {
-            //wp_set_current_user( $user_id, $user->user_login );
-
-            global $current_user;
-
-            if ( isset( $current_user ) && ( $current_user instanceof WP_User ) && ( $user->ID == $current_user->ID ) ){
-                return true;
-            }
-
-            $current_user = new WP_User( $user->ID, $user->user_login );
-
-            setup_userdata( $user->ID );
-
-            wp_set_auth_cookie( $user_id, $remember );
-            do_action( 'wp_login', $user->user_login );
-            return true;
-        }
-        return false;
+    function login( $user_id, $remember =  true  ){
+        return st_user_add_ond_login( $user_id, $remember );
     }
 
     /**
@@ -384,8 +363,8 @@ class ST_Uer_Facebook_Login{
             <tr>
                 <th scope="row"><label for="st_user_fb_app_id"><?php _e('Facebook App ID','st-user-fb-add-on'); ?></label></th>
                 <td>
-                    <input type="text" placeholder="836604639749778" class="regular-text" value="<?php echo esc_attr( get_option(  $this->option_setting ) ); ?>" id="<?php echo esc_attr( $this->option_setting ) ?>" name="<?php echo esc_attr( $this->option_setting ) ?>">
-                    <p class="description"><?php echo sprintf( __('Get Your app id <a target="_blank" href="%1$s">HERE</a>', 'st-user-fb-add-on') , 'https://developers.facebook.com/apps/' ); ?></p>
+                    <input type="text" placeholder="E.g: 836604639749778" class="regular-text" value="<?php echo esc_attr( get_option(  $this->option_setting ) ); ?>" id="<?php echo esc_attr( $this->option_setting ) ?>" name="<?php echo esc_attr( $this->option_setting ) ?>">
+                    <p class="description"><?php echo sprintf( __( 'Get Your app id <a target="_blank" href="%1$s">HERE</a>', 'st-user-fb-add-on' ) , 'https://developers.facebook.com/apps/' ); ?></p>
                 </td>
             </tr>
             </tbody>
